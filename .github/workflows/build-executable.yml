@@ -22,13 +22,17 @@ jobs:
           python -m pip install --force-reinstall -r requirements.txt
           python -m pip install pyinstaller
 
-      - name: Create Executable
+      - name: Create UI Executable
         run: |
           pyinstaller config_manager.py -y --onefile --noconsole --clean `
             --add-data "assets/EDAI_logo.png;assets" `
             --add-data "assets/EDAI_logo_transparent.png;assets" `
-            --add-data "twitch.py;." `
             --name "COVAS_Twitch_Integration"
+
+      - name: Create Bot Executable
+        run: |
+          pyinstaller twitch.py -y --onefile --console --clean `
+            --name "COVAS_Twitch_Bot"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
@@ -36,4 +40,5 @@ jobs:
           name: COVAS_Twitch_Integration_v${{ github.sha }}
           path: |
             ./dist/COVAS_Twitch_Integration.exe
+            ./dist/COVAS_Twitch_Bot.exe
             ./README.md 

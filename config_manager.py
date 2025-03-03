@@ -352,16 +352,39 @@ class ConfigManager:
         # Start the bot as a subprocess
         try:
             config_str = json.dumps(self.config)
-            cmd = [
-                sys.executable,
-                'twitch.py',
+            
+            # Determine if we're running from a PyInstaller bundle
+            if getattr(sys, 'frozen', False):
+                # Running as compiled executable
+                bot_script = os.path.join(os.path.dirname(sys.executable), 'COVAS_Twitch_Bot.exe')
+                if not os.path.exists(bot_script):
+                    bot_script = 'COVAS_Twitch_Bot.exe'  # Try current directory
+            else:
+                # Running as script
+                bot_script = 'twitch.py'
+            
+            if getattr(sys, 'frozen', False) and not os.path.exists(bot_script):
+                error_msg = "Error: Could not find COVAS_Twitch_Bot.exe. Make sure it's in the same directory as the main executable.\n"
+                if self.log_text is not None:
+                    self.log_text.insert(tk.END, error_msg)
+                    self.log_text.see(tk.END)
+                self.stop_bot()
+                return
+            
+            # Prepare command
+            if bot_script.endswith('.py'):
+                cmd = [sys.executable, bot_script]
+            else:
+                cmd = [bot_script]
+            
+            cmd.extend([
                 '--channel',
                 channel,
                 '--bot-name',
                 bot_name,
                 '--patterns',
                 config_str
-            ]
+            ])
             
             # Start bot process
             self.bot_process = subprocess.Popen(
