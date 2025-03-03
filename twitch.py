@@ -11,28 +11,28 @@ DEFAULT_CONFIG = {
     "channel": "",
     "bot_name": "",
     "patterns": {
-        "follow": "just followed!",
-        "tip": "just tipped",
-        "host": "just hosted the stream",
-        "sub": "just subscribed!",
-        "resub": "just subscribed for",
-        "giftsub": "just gifted a subscription!",
-        "bits": "cheered",
-        "redeem": "just redeemed",
-        "raid": "raids with",
-        "order": "just ordered"
+        "follow": "{user} just followed!",
+        "tip": "{user} just tipped {amount}! Message: {message}",
+        "host": "{user} just hosted the stream for {viewers} viewers!",
+        "sub": "{user} just subscribed!",
+        "resub": "{user} just subscribed for {months} months in a row!",
+        "giftsub": "{user} just gifted a subscription!",
+        "bits": "{user} cheered {amount} bits! {message}",
+        "redeem": "{user} just redeemed {reward}!",
+        "raid": "{user} raids with {viewers} viewers!",
+        "order": "{user} just ordered {item}!"
     },
     "instructions": {
         "follow": "Show appreciation by greeting {user} and thanking them for the follow.",
-        "tip": "Acknowledge {user}'s donation of {amount} and express gratitude for their support.",
-        "host": "Give a shout-out to {user} for hosting {channel}'s stream.",
+        "tip": "Acknowledge {user}'s donation of {amount}, express gratitude for their support and mention their message: {message}",
+        "host": "Give a shout-out to {user} for hosting the stream and thank them for bringing {viewers} viewers.",
         "sub": "Celebrate {user}'s subscription and give them a warm welcome.",
-        "resub": "Acknowledge {user}'s loyalty of {months} months and express gratitude for their continued support.",
-        "giftsub": "Acknowledge {user}'s generosity and express gratitude.",
-        "bits": "Give a big thank you to {user} for the {amount} bits and mention their message.",
+        "resub": "Acknowledge {user}'s loyalty of {months} months and express your gratitude for their continued support.",
+        "giftsub": "Acknowledge {user}'s generosity and express your gratitude.",
+        "bits": "Give a big thank you to {user} for the {amount} bits and mention their message: {message}",
         "redeem": "Acknowledge {user}'s redemption of {reward} and fulfill their request if applicable.",
-        "raid": "Welcome the raiding party and express appreciation to {user} for bringing {viewers} viewers.",
-        "order": "Acknowledge {user}'s order for {item} and let them know when it will be fulfilled."
+        "raid": "Welcome the raiding party of {viewers} viewers and express your appreciation to {user} for the raid.",
+        "order": "Acknowledge {user}'s order of {item} and let them know when it will be fulfilled."
     }
 }
 
@@ -85,61 +85,101 @@ def create_pattern_matchers(config, channel_name):
     """Create regex patterns and their corresponding formatters based on configured patterns"""
     pattern_matchers = []
     
-    # Define event patterns with their corresponding instruction formatters
-    events = [
-        ('follow', r"(.+) {pattern}", lambda m: (m[0],)),
-        ('tip', r"(.+) {pattern} ([0-9]+)", lambda m: (m[0], m[1])),
-        ('host', r"(.+) {pattern}", lambda m: (m[0],)),
-        ('sub', r"(.+) {pattern}", lambda m: (m[0],)),
-        ('resub', r"(.+) {pattern} ([0-9]+)", lambda m: (m[0], m[1])),
-        ('giftsub', r"(.+) {pattern}", lambda m: (m[0],)),
-        ('bits', r"(.+) {pattern} ([0-9]+)", lambda m: (m[0], m[1])),
-        ('redeem', r"(.+) {pattern} (.+)", lambda m: (m[0], m[1])),
-        ('raid', r"(.+) {pattern} ([0-9]+)", lambda m: (m[0], m[1])),
-        ('order', r"(.+) {pattern} (.+)", lambda m: (m[0], m[1]))
-    ]
+    # Define event types and their variable groups
+    events = {
+        'follow': ['user'],
+        'tip': ['user', 'amount', 'message'],
+        'host': ['user', 'viewers'],
+        'sub': ['user'],
+        'resub': ['user', 'months'],
+        'giftsub': ['user'],
+        'bits': ['user', 'amount', 'message'],
+        'redeem': ['user', 'reward'],
+        'raid': ['user', 'viewers'],
+        'order': ['user', 'item']
+    }
     
-    for event_key, pattern_template, group_formatter in events:
+    log("Creating pattern matchers:")
+    for event_key, variables in events.items():
         try:
-            pattern = pattern_template.format(pattern=config['patterns'][event_key])
+            # Get the user's configured pattern
+            pattern = config['patterns'][event_key]
+            
+            # Create a regex pattern that matches the exact text
+            regex_pattern = re.escape(pattern)
+            
+            # Replace the escaped placeholders with capture groups
+            for var in variables:
+                placeholder = re.escape('{' + var + '}')
+                if var in ['amount', 'viewers', 'months']:
+                    regex_pattern = regex_pattern.replace(placeholder, r'(\d+(?:\.\d+)?|\d+)')
+                else:
+                    regex_pattern = regex_pattern.replace(placeholder, r'(.+?)')
+            
+            # Add start/end markers and compile
+            regex_pattern = f"^{regex_pattern}$"
+            
+            # Show the conversion from pattern to regex
+            log(f"{event_key}:")
+            log(f"  Pattern: {pattern}")
+            log(f"  Regex: {regex_pattern}")
+            
+            # Create the formatter function that will extract the right number of groups
+            def make_formatter(key, num_vars):
+                return lambda m: (key, tuple(m.group(i+1) for i in range(num_vars)))
+            
             pattern_matchers.append((
-                re.compile(pattern, re.IGNORECASE),
-                lambda m, k=event_key, f=group_formatter: (k, f(m))
+                re.compile(regex_pattern, re.IGNORECASE),
+                make_formatter(event_key, len(variables))
             ))
-        except re.error as e:
-            log(f"ERROR - Failed to compile pattern for {event_key}: {str(e)}")
+            
+        except (KeyError, re.error) as e:
+            log(f"ERROR - Failed to create pattern for {event_key}: {str(e)}")
             continue
     
     return pattern_matchers
 
 def process_event(message, channel_name, pattern_matchers, config):
     """Process various Twitch events using configured patterns"""
-    log(f"DEBUG - Checking message: {message}", True)
-    
     for pattern, formatter in pattern_matchers:
-        match = pattern.match(message)
-        if match:
-            event_key, groups = formatter(match.groups())
-            instruction = config['instructions'][event_key]
-            
-            # Format instruction with captured groups
-            format_args = {
-                'user': groups[0],
-                'channel': channel_name,
-                'amount': groups[1] if len(groups) > 1 else '',
-                'months': groups[1] if len(groups) > 1 else '',
-                'viewers': groups[1] if len(groups) > 1 else '',
-                'reward': groups[1] if len(groups) > 1 else '',
-                'item': groups[1] if len(groups) > 1 else '',
-                'message': groups[1] if len(groups) > 1 else ''
-            }
-            
-            try:
-                formatted_instruction = instruction.format(**format_args)
-                log(f"INSTRUCTION: {formatted_instruction}")
-                return True
-            except KeyError as e:
-                log(f"ERROR - Failed to format instruction: {str(e)}")
+        try:
+            match = pattern.match(message)
+            if match:
+                event_key, groups = formatter(match)
+                instruction = config['instructions'][event_key]
+                
+                # Format instruction with captured groups
+                format_args = {
+                    'user': groups[0],
+                    'channel': channel_name
+                }
+                
+                # Add additional parameters based on event type
+                if event_key in ['tip', 'bits']:
+                    format_args.update({
+                        'amount': groups[1],
+                        'message': groups[2]
+                    })
+                elif event_key in ['host', 'raid']:
+                    format_args['viewers'] = groups[1]
+                elif event_key == 'resub':
+                    format_args['months'] = groups[1]
+                elif event_key == 'redeem':
+                    format_args['reward'] = groups[1]
+                elif event_key == 'order':
+                    format_args['item'] = groups[1]
+                
+                try:
+                    formatted_instruction = instruction.format(**format_args)
+                    log(f"INSTRUCTION: {formatted_instruction}")
+                    return True
+                except KeyError as e:
+                    log(f"ERROR - Failed to format instruction: {str(e)}")
+            else:
+                # Debug output for non-matching patterns
+                log(f"DEBUG - Pattern '{pattern.pattern}' did not match message: {message}", True)
+        except Exception as e:
+            log(f"ERROR - Pattern matching failed: {str(e)}", True)
     
     return False
 
@@ -151,12 +191,19 @@ def main():
     
     # Load configuration
     try:
+        log("Starting bot with configuration...")
         config = json.loads(args.patterns)
         # Verify config structure
         required_sections = ['patterns', 'instructions']
         for section in required_sections:
             if section not in config:
                 raise ValueError(f"Missing required section: {section}")
+        
+        # Show loaded patterns for debugging
+        log("Loaded patterns:")
+        for event, pattern in config['patterns'].items():
+            log(f"{event}: {pattern}")
+        
     except json.JSONDecodeError:
         log("Error: Invalid configuration JSON")
         sys.exit(1)
@@ -166,6 +213,7 @@ def main():
     
     # Create pattern matchers
     pattern_matchers = create_pattern_matchers(config, args.channel)
+    log("Pattern matchers created successfully")
     
     # Print minimal configuration
     log("Connecting to Twitch chat...")

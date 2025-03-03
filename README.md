@@ -14,22 +14,59 @@ This integration listens to Twitch chat events (follows, subs, tips, etc.) and f
 2. **Configuration**
    - Enter your Twitch channel name
    - Enter your bot account name
-   - Configure event patterns and instructions:
-     - **Patterns**: What to match in chat (e.g., "!thanks {user} for the follow!")
-     - **Instructions**: How COVAS:NEXT should respond (e.g., "Act grateful for {user}'s follow")
+   - Configure event patterns and instructions using the templates below
 
-## Event Types
+## Default Event Templates
 
-- Follows
-- Subscriptions (new/resub)
-- Bits
-- Tips
-- Raids
-- Channel Point Redemptions
-- Host/Raids
-- Orders
+### Follow
+- **Pattern**: `{user} just followed!`
+- **Variables**: `{user}`
+- **Instruction**: `Show appreciation by greeting {user} and thanking them for the follow.`
 
-Each event can be customized with unique patterns and AI instructions to create personalized interactions for your stream.
+### Tip
+- **Pattern**: `{user} just tipped {amount}! Message: {message}`
+- **Variables**: `{user}, {amount}, {message}`
+- **Instruction**: `Acknowledge {user}'s donation of {amount}, express gratitude for their support and mention their message: {message}`
+
+### Host
+- **Pattern**: `{user} just hosted the stream for {viewers} viewers!`
+- **Variables**: `{user}, {viewers}`
+- **Instruction**: `Give a shout-out to {user} for hosting the stream and thank them for bringing {viewers} viewers.`
+
+### Subscribe
+- **Pattern**: `{user} just subscribed!`
+- **Variables**: `{user}`
+- **Instruction**: `Celebrate {user}'s subscription and give them a warm welcome.`
+
+### Resub
+- **Pattern**: `{user} just subscribed for {months} months in a row!`
+- **Variables**: `{user}, {months}`
+- **Instruction**: `Acknowledge {user}'s loyalty of {months} months and express gratitude for their continued support.`
+
+### Gift Sub
+- **Pattern**: `{user} just gifted a subscription!`
+- **Variables**: `{user}`
+- **Instruction**: `Acknowledge {user}'s generosity and express gratitude.`
+
+### Bits
+- **Pattern**: `{user} cheered {amount} bits! {message}`
+- **Variables**: `{user}, {amount}, {message}`
+- **Instruction**: `Give a big thank you to {user} for the {amount} bits and mention their message: {message}`
+
+### Channel Point Redemption
+- **Pattern**: `{user} just redeemed {reward}!`
+- **Variables**: `{user}, {reward}`
+- **Instruction**: `Acknowledge {user}'s redemption of {reward} and fulfill their request if applicable.`
+
+### Raid
+- **Pattern**: `{user} raids with {viewers} viewers!`
+- **Variables**: `{user}, {viewers}`
+- **Instruction**: `Welcome the raiding party and express appreciation to {user} for bringing {viewers} viewers.`
+
+### Order
+- **Pattern**: `{user} just ordered {item}!`
+- **Variables**: `{user}, {item}`
+- **Instruction**: `Acknowledge {user}'s order for {item} and let them know when it will be fulfilled.`
 
 ## Tips
 

@@ -163,16 +163,16 @@ class ConfigManager:
         self.instruction_entries = {}
         
         events = [
-            ('follow', 'Follow', '{user}, {channel}'),
-            ('tip', 'Tip', '{user}, {amount}, {channel}'),
-            ('host', 'Host', '{user}, {channel}'),
-            ('sub', 'Subscribe', '{user}, {channel}'),
-            ('resub', 'Resub', '{user}, {months}, {channel}'),
-            ('giftsub', 'Gift Sub', '{user}, {channel}'),
-            ('bits', 'Bits', '{user}, {amount}, {message}, {channel}'),
-            ('redeem', 'Redeem', '{user}, {reward}, {channel}'),
-            ('raid', 'Raid', '{user}, {viewers}, {channel}'),
-            ('order', 'Order', '{user}, {item}, {channel}')
+            ('follow', 'Follow', '{user}'),
+            ('tip', 'Tip', '{user}, {amount}, message'),
+            ('host', 'Host', '{user}, {viewers}'),
+            ('sub', 'Subscribe', '{user}'),
+            ('resub', 'Resub', '{user}, {months}'),
+            ('giftsub', 'Gift Sub', '{user}'),
+            ('bits', 'Bits', '{user}, {amount}, message'),
+            ('redeem', 'Redeem', '{user}, {reward}'),
+            ('raid', 'Raid', '{user}, {viewers}'),
+            ('order', 'Order', '{user}, {item}')
         ]
         
         for i, (event_key, event_name, variables) in enumerate(events):
@@ -181,7 +181,7 @@ class ConfigManager:
             label_frame.grid(row=i*3, column=0, columnspan=2, sticky='ew', padx=5, pady=(10,0))
             
             ttk.Label(label_frame, text=f"{event_name}", font=('Helvetica', 10, 'bold'), style='SemiTransparent.TLabel').pack(side='left', padx=5)
-            ttk.Label(label_frame, text=f"Variables: {variables}", font=('Helvetica', 8), style='SemiTransparent.TLabel').pack(side='left', padx=5)
+            ttk.Label(label_frame, text=f"Example: {DEFAULT_CONFIG['patterns'][event_key]}", font=('Helvetica', 8), style='SemiTransparent.TLabel').pack(side='left', padx=5)
             
             # Pattern
             pattern_frame = ttk.Frame(scrollable_frame, style='Transparent.TFrame')
@@ -196,7 +196,7 @@ class ConfigManager:
             instruction_frame.grid(row=i*3+2, column=0, columnspan=2, sticky='ew', padx=5)
             
             ttk.Label(instruction_frame, text="Instruction:", style='SemiTransparent.TLabel').pack(side='left', padx=5)
-            self.instruction_entries[event_key] = ttk.Entry(instruction_frame, width=40)
+            self.instruction_entries[event_key] = ttk.Entry(instruction_frame, width=80)
             self.instruction_entries[event_key].pack(side='left', fill='x', expand=True, padx=5)
         
         # Pack canvas and scrollbar
@@ -207,7 +207,6 @@ class ConfigManager:
         button_frame = ttk.Frame(parent, style='Transparent.TFrame')
         button_frame.pack(fill='x', pady=5)
         
-        ttk.Button(button_frame, text="Save", command=self.save_config, style='Visible.TButton').pack(side='left', padx=5)
         ttk.Button(button_frame, text="Start Bot", command=self.start_bot, style='Visible.TButton').pack(side='left', padx=5)
         ttk.Button(button_frame, text="Reset to Defaults", command=self.reset_to_defaults, style='Visible.TButton').pack(side='right', padx=5)
 
@@ -223,8 +222,8 @@ class ConfigManager:
         self.bot_name_entry.insert(0, bot_name)
         
         # Load patterns and instructions with proper type checking
-        patterns = self.config.get('patterns', {})
-        instructions = self.config.get('instructions', {})
+        patterns = self.config.get('patterns', DEFAULT_CONFIG['patterns'])
+        instructions = self.config.get('instructions', DEFAULT_CONFIG['instructions'])
         
         if not isinstance(patterns, dict):
             patterns = DEFAULT_CONFIG['patterns']
@@ -232,8 +231,8 @@ class ConfigManager:
             instructions = DEFAULT_CONFIG['instructions']
         
         for event_key in self.pattern_entries:
-            pattern_value = str(patterns.get(event_key, ''))
-            instruction_value = str(instructions.get(event_key, ''))
+            pattern_value = str(patterns.get(event_key, DEFAULT_CONFIG['patterns'][event_key]))
+            instruction_value = str(instructions.get(event_key, DEFAULT_CONFIG['instructions'][event_key]))
             self.pattern_entries[event_key].insert(0, pattern_value)
             self.instruction_entries[event_key].insert(0, instruction_value)
 
@@ -304,18 +303,29 @@ class ConfigManager:
         self.output_queue.put(None)  # Signal end of output
 
     def start_bot(self):
-        if not self.config.get('channel') or not self.config.get('bot_name'):
+        # Get current values from entries
+        channel = self.channel_entry.get().strip()
+        bot_name = self.bot_name_entry.get().strip()
+        
+        if not channel or not bot_name:
+            messagebox.showerror("Error", "Please enter both Channel Name and Bot Name before starting.")
             return
         
-        # Save current configuration
+        # Update config with current values before saving
+        self.config['channel'] = channel
+        self.config['bot_name'] = bot_name
+        
+        # Auto-save configuration before starting
         self.save_config()
         
         # Hide main container and show log container
-        self.main_container.pack_forget()
-        self.log_container.pack(fill='both', expand=True)
-        
-        # Clear previous log
-        self.log_text.delete(1.0, tk.END)
+        if self.main_container:
+            self.main_container.pack_forget()
+        if self.log_container:
+            self.log_container.pack(fill='both', expand=True)
+            self.log_text.delete(1.0, tk.END)
+            self.log_text.insert(tk.END, "Starting bot...\n")
+            self.log_text.see(tk.END)
         
         # Reset thread control
         self.should_stop = False
@@ -327,9 +337,9 @@ class ConfigManager:
                 sys.executable,
                 'twitch.py',
                 '--channel',
-                str(self.config.get('channel', '')),
+                channel,
                 '--bot-name',
-                str(self.config.get('bot_name', '')),
+                bot_name,
                 '--patterns',
                 config_str
             ]
@@ -352,7 +362,12 @@ class ConfigManager:
             self.root.after(100, self.update_log)
             
         except Exception as e:
-            self.log_text.insert(tk.END, f"Error starting bot: {str(e)}\n")
+            error_msg = f"Error starting bot: {str(e)}\n"
+            if self.log_text:
+                self.log_text.insert(tk.END, error_msg)
+                self.log_text.see(tk.END)
+            else:
+                messagebox.showerror("Error", error_msg)
             self.stop_bot()
     
     def update_log(self):
