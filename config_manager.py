@@ -11,6 +11,8 @@ import io
 from contextlib import redirect_stdout
 from typing import Dict, Any, cast, Optional, Union
 from twitch import DEFAULT_CONFIG, load_or_create_config, main as twitch_main
+from EDMesg.base import EDMesgEvent
+from EDMesg.TwitchIntegration import create_twitch_provider, TwitchNotificationEvent
 
 class ConfigManager:
     def __init__(self, root):
@@ -29,6 +31,7 @@ class ConfigManager:
         self.config: Dict[str, Any] = {}
         self.pattern_entries: Dict[str, ttk.Entry] = {}
         self.instruction_entries: Dict[str, ttk.Entry] = {}
+        self.twitch_provider = create_twitch_provider()  # Create Twitch provider
         
         # Set initial window size
         window_width = 800
@@ -385,6 +388,40 @@ class ConfigManager:
                         # Check if this is an INSTRUCTION entry
                         if isinstance(line, str) and "INSTRUCTION" in line:
                             self.log_text.insert(tk.END, line, "cyan")
+                            # Send instruction to EDMesg using TwitchNotificationEvent
+                            try:
+                                # Parse the instruction line
+                                instruction_text = line.replace("INSTRUCTION:", "").strip()
+                                
+                                # Extract timestamp if present
+                                timestamp = ""
+                                if line.startswith("[") and "]" in line:
+                                    timestamp = line[1:line.index("]")]
+                                
+                                # Try to find the event type from the instruction text
+                                event_type = None
+                                for key in self.config.get('patterns', {}):
+                                    if key in instruction_text.lower():
+                                        event_type = key
+                                        break
+                                
+                                # If we found the event type, combine pattern and instruction
+                                if event_type and event_type in self.config.get('patterns', {}):
+                                    pattern_text = self.config['patterns'][event_type]
+                                    message = f"{pattern_text} | {instruction_text}"
+                                else:
+                                    message = instruction_text
+                                
+                                self.twitch_provider.publish(
+                                    TwitchNotificationEvent(
+                                        message=message,
+                                        notification_type="redeem",
+                                        timestamp=timestamp
+                                    )
+                                )
+                                print(f"Sent instruction to EDMesg: {message}")
+                            except Exception as e:
+                                print(f"Error sending to EDMesg: {str(e)}")
                         else:
                             self.log_text.insert(tk.END, line)
                         self.log_text.see(tk.END)
@@ -404,6 +441,13 @@ class ConfigManager:
         # Signal thread to stop
         self.should_stop = True
         
+        # Close EDMesg provider
+        try:
+            if hasattr(self, 'twitch_provider'):
+                self.twitch_provider.close()
+        except:
+            pass
+            
         # Terminate the bot process
         if self.bot_process:
             try:
