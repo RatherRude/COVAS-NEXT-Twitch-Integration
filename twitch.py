@@ -17,7 +17,7 @@ DEFAULT_CONFIG = {
         "sub": "{user} just subscribed!",
         "resub": "{user} just subscribed for {months} months in a row!",
         "giftsub": "{user} just gifted a subscription!",
-        "bits": "{user} cheered {amount} bits! {message}",
+        "bits": "{user} cheered {amount} bits! Message: {message}",
         "redeem": "{user} just redeemed {reward}!",
         "raid": "{user} raids with {viewers} viewers!",
         "order": "{user} just ordered {item}!"
@@ -79,7 +79,8 @@ def parse_args():
 def log(message, is_debug=False):
     """Print message and flush stdout to ensure immediate output"""
     if not is_debug:  # Only print non-debug messages
-        print(message, flush=True)
+        timestamp = time.strftime("%H:%M")
+        print(f"[{timestamp}] {message}", flush=True)
 
 def create_pattern_matchers(config, channel_name):
     """Create regex patterns and their corresponding formatters based on configured patterns"""
@@ -224,6 +225,7 @@ def main():
                 chat_match = re.search(r":([^!]+)![^@]+@[^.]+\.tmi\.twitch\.tv PRIVMSG #[^:]+:(.+)", resp.strip())
                 if chat_match:
                     username, message = chat_match.groups()
+                    log(f"CHAT - {username}: {message}")
                     process_event(message, args.channel, pattern_matchers, config)
 
             except Exception as e:
