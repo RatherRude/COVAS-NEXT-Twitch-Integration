@@ -99,16 +99,11 @@ def create_pattern_matchers(config, channel_name):
         'order': ['user', 'item']
     }
     
-    log("Creating pattern matchers:")
     for event_key, variables in events.items():
         try:
-            # Get the user's configured pattern
             pattern = config['patterns'][event_key]
-            
-            # Create a regex pattern that matches the exact text
             regex_pattern = re.escape(pattern)
             
-            # Replace the escaped placeholders with capture groups
             for var in variables:
                 placeholder = re.escape('{' + var + '}')
                 if var in ['amount', 'viewers', 'months']:
@@ -116,15 +111,8 @@ def create_pattern_matchers(config, channel_name):
                 else:
                     regex_pattern = regex_pattern.replace(placeholder, r'(.+?)')
             
-            # Add start/end markers and compile
             regex_pattern = f"^{regex_pattern}$"
             
-            # Show the conversion from pattern to regex
-            log(f"{event_key}:")
-            log(f"  Pattern: {pattern}")
-            log(f"  Regex: {regex_pattern}")
-            
-            # Create the formatter function that will extract the right number of groups
             def make_formatter(key, num_vars):
                 return lambda m: (key, tuple(m.group(i+1) for i in range(num_vars)))
             
@@ -189,20 +177,12 @@ def main():
     if not channel_name.startswith('#'):
         channel_name = f"#{channel_name}"
     
-    # Load configuration
     try:
-        log("Starting bot with configuration...")
         config = json.loads(args.patterns)
-        # Verify config structure
         required_sections = ['patterns', 'instructions']
         for section in required_sections:
             if section not in config:
                 raise ValueError(f"Missing required section: {section}")
-        
-        # Show loaded patterns for debugging
-        log("Loaded patterns:")
-        for event, pattern in config['patterns'].items():
-            log(f"{event}: {pattern}")
         
     except json.JSONDecodeError:
         log("Error: Invalid configuration JSON")
@@ -211,53 +191,39 @@ def main():
         log(f"Error: {str(e)}")
         sys.exit(1)
     
-    # Create pattern matchers
     pattern_matchers = create_pattern_matchers(config, args.channel)
-    log("Pattern matchers created successfully")
     
-    # Print minimal configuration
-    log("Connecting to Twitch chat...")
+    log(f"Channel: {args.channel}")
+    log(f"Bot Name: {args.bot_name}")
 
-    # Twitch IRC server details
     HOST = "irc.chat.twitch.tv"
-    PORT = 443  # HTTPS port
-    NICK = "justinfan" + str(int(time.time()))  # Anonymous connection with random number
+    PORT = 443
+    NICK = "justinfan" + str(int(time.time()))
     CHANNEL = channel_name
 
-    # Connect to Twitch IRC
     try:
-        # Create SSL context
         context = ssl.create_default_context()
-        
-        # Create socket and wrap with SSL
         sock = socket.socket()
         sock = context.wrap_socket(sock, server_hostname=HOST)
         sock.connect((HOST, PORT))
         
-        # Send connection info for anonymous connection
         sock.send(f"NICK {NICK}\r\n".encode("utf-8"))
         sock.send(f"USER {NICK} 8 * :{NICK}\r\n".encode("utf-8"))
         sock.send(f"JOIN {CHANNEL}\r\n".encode("utf-8"))
 
-        log("Successfully connected to chat!")
+        log("Connected successfully")
 
         while True:
             try:
                 resp = sock.recv(2048).decode("utf-8")
-                log(f"DEBUG - Raw message: {resp.strip()}", True)
 
-                # Handle PING-PONG to keep the connection alive
                 if resp.startswith("PING"):
                     sock.send("PONG :tmi.twitch.tv\r\n".encode("utf-8"))
                     continue
 
-                # Extract username and message from chat
                 chat_match = re.search(r":([^!]+)![^@]+@[^.]+\.tmi\.twitch\.tv PRIVMSG #[^:]+:(.+)", resp.strip())
                 if chat_match:
                     username, message = chat_match.groups()
-                    log(f"CHAT - {username}: {message}")
-                    
-                    # Process for special events
                     process_event(message, args.channel, pattern_matchers, config)
 
             except Exception as e:
