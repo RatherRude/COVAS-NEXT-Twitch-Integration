@@ -18,14 +18,11 @@ class ConfigManager:
         self.root.title("COVAS:NEXT Twitch Integration")
         
         # Initialize instance variables
-        self.bg_image = None
-        self.bg_photo = None
-        self.bg_label = None
         self.container: Optional[tk.Frame] = None
         self.bot_process = None
         self.log_text: Optional[scrolledtext.ScrolledText] = None
         self.main_container: Optional[ttk.Frame] = None
-        self.log_container: Optional[ttk.Frame] = None
+        self.log_container: Optional[tk.Frame] = None
         self.output_queue: queue.Queue[Optional[str]] = queue.Queue()
         self.reading_thread: Optional[threading.Thread] = None
         self.should_stop = False
@@ -56,21 +53,9 @@ class ConfigManager:
             except Exception as e:
                 print(f"Error loading icon: {str(e)}")
         
-        # Create a container frame for background
+        # Create a container frame
         self.container = tk.Frame(self.root)
         self.container.place(relwidth=1, relheight=1)
-        
-        # Load and set background image
-        bg_path = os.path.join('assets', 'EDAI_logo.png')
-        if os.path.exists(bg_path):
-            try:
-                self.bg_image = Image.open(bg_path)
-                self.update_background()
-                
-                # Bind resize event
-                self.root.bind('<Configure>', self.on_resize)
-            except Exception as e:
-                print(f"Error loading background: {str(e)}")
         
         # Load configuration
         self.config = load_or_create_config()
@@ -80,9 +65,9 @@ class ConfigManager:
         self.main_container.pack(fill='both', expand=True)
         
         # Create log container (initially hidden)
-        self.log_container = ttk.Frame(self.container, padding="10", style='Transparent.TFrame')
-        self.log_text = scrolledtext.ScrolledText(self.log_container, wrap=tk.WORD)
-        self.log_text.pack(fill=tk.BOTH, expand=True)
+        self.log_container = tk.Frame(self.container, background='black')
+        self.log_text = scrolledtext.ScrolledText(self.log_container, wrap=tk.WORD, bg='black', fg='purple')
+        self.log_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         stop_button = ttk.Button(self.log_container, text="Stop Bot", command=self.stop_bot)
         stop_button.pack(pady=5)
         
@@ -97,32 +82,6 @@ class ConfigManager:
         
         # Load existing values
         self.load_values()
-
-    def update_background(self):
-        # Only proceed if we have a background image
-        if self.bg_image is None:
-            return
-            
-        # Get current window size
-        width = self.root.winfo_width()
-        height = self.root.winfo_height()
-        
-        # Resize image to fit window
-        resized_image = self.bg_image.resize((width, height), Image.Resampling.LANCZOS)
-        self.bg_photo = ImageTk.PhotoImage(resized_image)
-        
-        # Update background label
-        if self.bg_label is not None:
-            self.bg_label.destroy()
-        
-        self.bg_label = tk.Label(self.container, image=self.bg_photo)
-        self.bg_label.place(x=0, y=0, relwidth=1, relheight=1)
-        self.bg_label.lower()  # Ensure background is behind other widgets
-
-    def on_resize(self, event):
-        # Only update if the window size actually changed and we have a background image
-        if event.widget == self.root and self.bg_image is not None:
-            self.update_background()
 
     def setup_basic_settings(self, parent):
         # Basic Settings Frame with transparency
@@ -337,10 +296,12 @@ class ConfigManager:
         try:
             if isinstance(main_container, ttk.Frame):
                 main_container.pack_forget()
-            if isinstance(log_container, ttk.Frame) and isinstance(log_text, scrolledtext.ScrolledText):
+            if isinstance(log_container, tk.Frame) and isinstance(log_text, scrolledtext.ScrolledText):
                 log_container.pack(fill='both', expand=True)
                 log_text.delete(1.0, tk.END)
-                log_text.insert(tk.END, "Starting bot...\n")
+                log_text.tag_configure("orange", foreground="orange")
+                log_text.tag_configure("cyan", foreground="cyan")
+                log_text.insert(tk.END, "Starting bot...\n", "orange")
                 log_text.see(tk.END)
         except tk.TclError:
             # Handle case where widgets are already destroyed
@@ -421,7 +382,11 @@ class ConfigManager:
                         self.stop_bot()
                         return
                     if self.log_text is not None:
-                        self.log_text.insert(tk.END, line)
+                        # Check if this is an INSTRUCTION entry
+                        if isinstance(line, str) and "INSTRUCTION" in line:
+                            self.log_text.insert(tk.END, line, "cyan")
+                        else:
+                            self.log_text.insert(tk.END, line)
                         self.log_text.see(tk.END)
                 except queue.Empty:
                     break
@@ -461,7 +426,7 @@ class ConfigManager:
         
         # Hide log container and show main container
         try:
-            if isinstance(self.log_container, ttk.Frame):
+            if isinstance(self.log_container, tk.Frame):
                 self.log_container.pack_forget()
             if isinstance(self.main_container, ttk.Frame):
                 self.main_container.pack(fill='both', expand=True)
