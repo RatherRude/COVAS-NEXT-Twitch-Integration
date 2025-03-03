@@ -390,36 +390,15 @@ class ConfigManager:
                             self.log_text.insert(tk.END, line, "cyan")
                             # Send instruction to EDMesg using TwitchNotificationEvent
                             try:
-                                # Parse the instruction line
                                 instruction_text = line.replace("INSTRUCTION:", "").strip()
-                                
-                                # Extract timestamp if present
-                                timestamp = ""
-                                if line.startswith("[") and "]" in line:
-                                    timestamp = line[1:line.index("]")]
-                                
-                                # Try to find the event type from the instruction text
-                                event_type = None
-                                for key in self.config.get('patterns', {}):
-                                    if key in instruction_text.lower():
-                                        event_type = key
-                                        break
-                                
-                                # If we found the event type, combine pattern and instruction
-                                if event_type and event_type in self.config.get('patterns', {}):
-                                    pattern_text = self.config['patterns'][event_type]
-                                    message = f"{pattern_text} | {instruction_text}"
-                                else:
-                                    message = instruction_text
-                                
                                 self.twitch_provider.publish(
                                     TwitchNotificationEvent(
-                                        message=message,
-                                        notification_type="redeem",
-                                        timestamp=timestamp
+                                        message=instruction_text,
+                                        notification_type="message",
+                                        timestamp=""  # Current time will be used
                                     )
                                 )
-                                print(f"Sent instruction to EDMesg: {message}")
+                                print(f"Sent instruction to EDMesg: {instruction_text}")
                             except Exception as e:
                                 print(f"Error sending to EDMesg: {str(e)}")
                         else:
