@@ -7,7 +7,10 @@ import subprocess
 import sys
 import threading
 import queue
-from twitch import DEFAULT_CONFIG, load_or_create_config
+import io
+from contextlib import redirect_stdout
+from typing import Dict, Any, cast, Optional, Union
+from twitch import DEFAULT_CONFIG, load_or_create_config, main as twitch_main
 
 class ConfigManager:
     def __init__(self, root):
@@ -18,14 +21,17 @@ class ConfigManager:
         self.bg_image = None
         self.bg_photo = None
         self.bg_label = None
-        self.container = None
+        self.container: Optional[tk.Frame] = None
         self.bot_process = None
-        self.log_text = None
-        self.main_container = None
-        self.log_container = None
-        self.output_queue = queue.Queue()
-        self.reading_thread = None
+        self.log_text: Optional[scrolledtext.ScrolledText] = None
+        self.main_container: Optional[ttk.Frame] = None
+        self.log_container: Optional[ttk.Frame] = None
+        self.output_queue: queue.Queue[Optional[str]] = queue.Queue()
+        self.reading_thread: Optional[threading.Thread] = None
         self.should_stop = False
+        self.config: Dict[str, Any] = {}
+        self.pattern_entries: Dict[str, ttk.Entry] = {}
+        self.instruction_entries: Dict[str, ttk.Entry] = {}
         
         # Set initial window size
         window_width = 800
@@ -222,17 +228,23 @@ class ConfigManager:
         self.bot_name_entry.insert(0, bot_name)
         
         # Load patterns and instructions with proper type checking
-        patterns = self.config.get('patterns', DEFAULT_CONFIG['patterns'])
-        instructions = self.config.get('instructions', DEFAULT_CONFIG['instructions'])
+        config_patterns = self.config.get('patterns', {})
+        config_instructions = self.config.get('instructions', {})
         
-        if not isinstance(patterns, dict):
-            patterns = DEFAULT_CONFIG['patterns']
-        if not isinstance(instructions, dict):
-            instructions = DEFAULT_CONFIG['instructions']
+        patterns = cast(Dict[str, str], DEFAULT_CONFIG['patterns']).copy()
+        instructions = cast(Dict[str, str], DEFAULT_CONFIG['instructions']).copy()
+        
+        if isinstance(config_patterns, dict):
+            patterns.update(config_patterns)
+        if isinstance(config_instructions, dict):
+            instructions.update(config_instructions)
         
         for event_key in self.pattern_entries:
-            pattern_value = str(patterns.get(event_key, DEFAULT_CONFIG['patterns'][event_key]))
-            instruction_value = str(instructions.get(event_key, DEFAULT_CONFIG['instructions'][event_key]))
+            default_patterns = cast(Dict[str, str], DEFAULT_CONFIG['patterns'])
+            default_instructions = cast(Dict[str, str], DEFAULT_CONFIG['instructions'])
+            
+            pattern_value = str(patterns.get(event_key, default_patterns.get(event_key, '')))
+            instruction_value = str(instructions.get(event_key, default_instructions.get(event_key, '')))
             self.pattern_entries[event_key].insert(0, pattern_value)
             self.instruction_entries[event_key].insert(0, instruction_value)
 
@@ -246,19 +258,18 @@ class ConfigManager:
         self.config['bot_name'] = self.bot_name_entry.get()
         
         # Initialize sections if they don't exist
-        if not isinstance(self.config.get('patterns', {}), dict):
+        if 'patterns' not in self.config or not isinstance(self.config['patterns'], dict):
             self.config['patterns'] = {}
-        if not isinstance(self.config.get('instructions', {}), dict):
+        if 'instructions' not in self.config or not isinstance(self.config['instructions'], dict):
             self.config['instructions'] = {}
         
         # Update patterns and instructions
+        patterns = cast(Dict[str, str], self.config['patterns'])
+        instructions = cast(Dict[str, str], self.config['instructions'])
+        
         for event_key in self.pattern_entries:
-            if 'patterns' not in self.config:
-                self.config['patterns'] = {}
-            if 'instructions' not in self.config:
-                self.config['instructions'] = {}
-            self.config['patterns'][event_key] = self.pattern_entries[event_key].get()
-            self.config['instructions'][event_key] = self.instruction_entries[event_key].get()
+            patterns[event_key] = self.pattern_entries[event_key].get()
+            instructions[event_key] = self.instruction_entries[event_key].get()
         
         # Save to file
         try:
@@ -319,18 +330,26 @@ class ConfigManager:
         self.save_config()
         
         # Hide main container and show log container
-        if self.main_container:
-            self.main_container.pack_forget()
-        if self.log_container:
-            self.log_container.pack(fill='both', expand=True)
-            self.log_text.delete(1.0, tk.END)
-            self.log_text.insert(tk.END, "Starting bot...\n")
-            self.log_text.see(tk.END)
+        main_container = self.main_container
+        log_container = self.log_container
+        log_text = self.log_text
+        
+        try:
+            if isinstance(main_container, ttk.Frame):
+                main_container.pack_forget()
+            if isinstance(log_container, ttk.Frame) and isinstance(log_text, scrolledtext.ScrolledText):
+                log_container.pack(fill='both', expand=True)
+                log_text.delete(1.0, tk.END)
+                log_text.insert(tk.END, "Starting bot...\n")
+                log_text.see(tk.END)
+        except tk.TclError:
+            # Handle case where widgets are already destroyed
+            pass
         
         # Reset thread control
         self.should_stop = False
         
-        # Start the bot
+        # Start the bot as a subprocess
         try:
             config_str = json.dumps(self.config)
             cmd = [
@@ -363,13 +382,11 @@ class ConfigManager:
             
         except Exception as e:
             error_msg = f"Error starting bot: {str(e)}\n"
-            if self.log_text:
+            if self.log_text is not None:
                 self.log_text.insert(tk.END, error_msg)
                 self.log_text.see(tk.END)
-            else:
-                messagebox.showerror("Error", error_msg)
             self.stop_bot()
-    
+
     def update_log(self):
         """Update log with bot output"""
         try:
@@ -380,15 +397,16 @@ class ConfigManager:
                     if line is None:  # End of output
                         self.stop_bot()
                         return
-                    self.log_text.insert(tk.END, line)
-                    self.log_text.see(tk.END)
+                    if self.log_text is not None:
+                        self.log_text.insert(tk.END, line)
+                        self.log_text.see(tk.END)
                 except queue.Empty:
                     break
         except Exception as e:
             print(f"Error updating log: {str(e)}")
         
         # Schedule next update if bot is still running
-        if self.bot_process and self.bot_process.poll() is None:
+        if not self.should_stop:
             self.root.after(100, self.update_log)
         else:
             self.stop_bot()
@@ -398,6 +416,7 @@ class ConfigManager:
         # Signal thread to stop
         self.should_stop = True
         
+        # Terminate the bot process
         if self.bot_process:
             try:
                 self.bot_process.terminate()
@@ -418,8 +437,14 @@ class ConfigManager:
                 pass
         
         # Hide log container and show main container
-        self.log_container.pack_forget()
-        self.main_container.pack(fill='both', expand=True)
+        try:
+            if isinstance(self.log_container, ttk.Frame):
+                self.log_container.pack_forget()
+            if isinstance(self.main_container, ttk.Frame):
+                self.main_container.pack(fill='both', expand=True)
+        except tk.TclError:
+            # Handle case where widgets are already destroyed
+            pass
 
 def main():
     root = tk.Tk()
