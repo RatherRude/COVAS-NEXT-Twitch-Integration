@@ -1,0 +1,39 @@
+name: Build Executable
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: Build Windows Executable
+    runs-on: windows-latest
+    
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install --force-reinstall -r requirements.txt
+          python -m pip install pyinstaller
+
+      - name: Create Executable
+        run: |
+          pyinstaller config_manager.py -y --onefile --noconsole --clean `
+            --add-data "assets/EDAI_logo.png;assets" `
+            --add-data "assets/EDAI_logo_transparent.png;assets" `
+            --add-data "twitch.py;." `
+            --name "COVAS_Twitch_Integration"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: COVAS_Twitch_Integration_v${{ github.sha }}
+          path: |
+            ./dist/COVAS_Twitch_Integration.exe
+            ./README.md 
