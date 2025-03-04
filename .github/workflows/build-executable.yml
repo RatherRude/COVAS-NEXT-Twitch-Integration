@@ -22,16 +22,51 @@ jobs:
           python -m pip install --force-reinstall -r requirements.txt
           python -m pip install pyinstaller
 
+      # Add version info file
+      - name: Create Version Info
+        run: |
+          echo "VSVersionInfo(
+            ffi=FixedFileInfo(
+              filevers=(1, 0, 0, 0),
+              prodvers=(1, 0, 0, 0),
+              mask=0x3f,
+              flags=0x0,
+              OS=0x40004,
+              fileType=0x1,
+              subtype=0x0,
+              date=(0, 0)
+            ),
+            kids=[
+              StringFileInfo([
+                StringTable(
+                  u'040904B0',
+                  [StringStruct(u'CompanyName', u'COVAS'),
+                  StringStruct(u'FileDescription', u'COVAS Twitch Integration'),
+                  StringStruct(u'FileVersion', u'1.0.0'),
+                  StringStruct(u'InternalName', u'COVAS_Twitch_Integration'),
+                  StringStruct(u'LegalCopyright', u'Copyright (c) 2024'),
+                  StringStruct(u'OriginalFilename', u'COVAS_Twitch_Integration.exe'),
+                  StringStruct(u'ProductName', u'COVAS Twitch Integration'),
+                  StringStruct(u'ProductVersion', u'1.0.0')])
+              ]),
+              VarFileInfo([VarStruct(u'Translation', [1033, 1200])])
+            ]
+          )" > version_info.txt
+
       - name: Create UI Executable
         run: |
           pyinstaller config_manager.py -y --onefile --noconsole --clean `
             --add-data "assets/EDAI_logo.png;assets" `
             --add-data "assets/EDAI_logo_transparent.png;assets" `
+            --version-file version_info.txt `
+            --uac-admin `
             --name "COVAS_Twitch_Integration"
 
       - name: Create Bot Executable
         run: |
           pyinstaller twitch.py -y --onefile --console --clean `
+            --version-file version_info.txt `
+            --uac-admin `
             --name "COVAS_Twitch_Bot"
 
       - name: Upload build artifact
@@ -42,3 +77,11 @@ jobs:
             ./dist/COVAS_Twitch_Integration.exe
             ./dist/COVAS_Twitch_Bot.exe
             ./README.md 
+
+## Antivirus False Positives
+
+Some antivirus software may flag this application as suspicious. This is a false positive due to the way the executable is packaged. The application is completely safe to use. You can:
+
+1. Add the application to your antivirus exclusions
+2. If using Windows Defender, click "More info" and then "Run anyway" when launching
+3. Verify the executable's digital signature (if code signing is implemented) 
