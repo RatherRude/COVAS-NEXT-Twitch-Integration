@@ -40,6 +40,7 @@ class ConfigManager:
         self.openai_verification_var = tk.BooleanVar()
         self.openai_verification_checkbox = None
         self.openai_api_key_entry = None
+        self.openai_key_container = None
 
         # Set initial window size
         window_width = 800
@@ -114,20 +115,28 @@ class ConfigManager:
         self.openai_verification_checkbox = ttk.Checkbutton(
             basic_frame, 
             text="Enable OpenAI Verification",
-            variable=self.openai_verification_var
+            variable=self.openai_verification_var,
+            command=self.toggle_openai_key_visibility
         )
         self.openai_verification_checkbox.pack(anchor='w', padx=5, pady=2)
 
-        # OpenAI API Key
-        ttk.Label(basic_frame, text="OpenAI API Key:").pack(anchor='w')
-        self.openai_api_key_entry = ttk.Entry(basic_frame, show="*")  # Password field
+        # OpenAI API Key (in a container frame for show/hide)
+        self.openai_key_container = ttk.Frame(basic_frame)
+        self.openai_key_container.pack(fill='x', padx=0, pady=0)
+        
+        ttk.Label(self.openai_key_container, text="OpenAI API Key:").pack(anchor='w')
+        self.openai_api_key_entry = ttk.Entry(self.openai_key_container, show="*")  # Password field
         self.openai_api_key_entry.pack(fill='x', padx=5, pady=2)
 
-        # Immediate Reaction Message
-        ttk.Label(basic_frame, text="Immediate Reaction Message:").pack(anchor='w')
-        self.immediate_reaction_entry = ttk.Entry(basic_frame)
-        self.immediate_reaction_entry.pack(fill='x', padx=5, pady=2)
-        ttk.Label(basic_frame, text="(Messages containing this text will trigger immediate reaction)", font=('Helvetica', 8)).pack(anchor='w', padx=5)
+    def toggle_openai_key_visibility(self):
+        """Toggle visibility of OpenAI API key input based on checkbox state"""
+        if not hasattr(self, 'openai_key_container') or self.openai_key_container is None:
+            return
+            
+        if self.openai_verification_var.get():
+            self.openai_key_container.pack(fill='x', padx=0, pady=0)
+        else:
+            self.openai_key_container.pack_forget()
 
     def setup_event_settings(self, parent):
         # Event Settings Frame with transparency
@@ -148,6 +157,20 @@ class ConfigManager:
         
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
+
+        # Immediate Reaction Message at the top
+        immediate_frame = ttk.Frame(scrollable_frame)
+        immediate_frame.grid(row=0, column=0, columnspan=2, sticky='ew', padx=5, pady=(5,10))
+        
+        ttk.Label(immediate_frame, text="Immediate Reaction Message", font=('Helvetica', 10, 'bold')).pack(anchor='w', padx=5)
+        self.immediate_reaction_entry = ttk.Entry(immediate_frame)
+        self.immediate_reaction_entry.insert(0, "@COVAS")  # Set default value
+        self.immediate_reaction_entry.pack(fill='x', padx=5, pady=2)
+        ttk.Label(immediate_frame, text="(Messages containing this text will trigger immediate reaction)", font=('Helvetica', 8)).pack(anchor='w', padx=5)
+        
+        # Add a separator
+        separator = ttk.Separator(scrollable_frame, orient='horizontal')
+        separator.grid(row=1, column=0, columnspan=2, sticky='ew', padx=5, pady=10)
         
         # Event settings
         self.pattern_entries = {}
@@ -166,17 +189,22 @@ class ConfigManager:
             ('order', 'Order', '{user}, {item}')
         ]
         
+        # Adjust starting row to account for immediate reaction frame and separator
+        row_offset = 2
+        
         for i, (event_key, event_name, variables) in enumerate(events):
+            base_row = (i * 3) + row_offset
+            
             # Event header with semi-transparent background
             label_frame = ttk.Frame(scrollable_frame)
-            label_frame.grid(row=i*3, column=0, columnspan=2, sticky='ew', padx=5, pady=(10,0))
+            label_frame.grid(row=base_row, column=0, columnspan=2, sticky='ew', padx=5, pady=(10,0))
             
             ttk.Label(label_frame, text=f"{event_name}", font=('Helvetica', 10, 'bold')).pack(side='left', padx=5)
             ttk.Label(label_frame, text=f"Example: {DEFAULT_CONFIG['patterns'][event_key]}", font=('Helvetica', 8)).pack(side='left', padx=5)
             
             # Pattern
             pattern_frame = ttk.Frame(scrollable_frame)
-            pattern_frame.grid(row=i*3+1, column=0, columnspan=2, sticky='ew', padx=5)
+            pattern_frame.grid(row=base_row + 1, column=0, columnspan=2, sticky='ew', padx=5)
             
             ttk.Label(pattern_frame, text="Pattern:").pack(side='left', padx=5)
             self.pattern_entries[event_key] = ttk.Entry(pattern_frame, width=40)
@@ -184,7 +212,7 @@ class ConfigManager:
             
             # Instruction
             instruction_frame = ttk.Frame(scrollable_frame)
-            instruction_frame.grid(row=i*3+2, column=0, columnspan=2, sticky='ew', padx=5)
+            instruction_frame.grid(row=base_row + 2, column=0, columnspan=2, sticky='ew', padx=5)
             
             ttk.Label(instruction_frame, text="Instruction:").pack(side='left', padx=5)
             self.instruction_entries[event_key] = ttk.Entry(instruction_frame, width=80)
@@ -209,17 +237,21 @@ class ConfigManager:
         # Get values with proper type checking
         channel = str(self.config.get('channel', ''))
         bot_name = str(self.config.get('bot_name', ''))
-        immediate_reaction = str(self.config.get('immediate_reaction', ''))
+        immediate_reaction = str(self.config.get('immediate_reaction', '@COVAS'))  # Set default here too
         openai_verification = bool(self.config.get('openai_verification', False))
         openai_api_key = str(self.config.get('openai_api_key', ''))
 
         self.channel_entry.insert(0, channel)
         self.bot_name_entry.insert(0, bot_name)
         if self.immediate_reaction_entry:
+            self.immediate_reaction_entry.delete(0, tk.END)  # Clear first
             self.immediate_reaction_entry.insert(0, immediate_reaction)
         self.openai_verification_var.set(openai_verification)
         if self.openai_api_key_entry:
             self.openai_api_key_entry.insert(0, openai_api_key)
+        
+        # Update OpenAI key visibility based on loaded state
+        self.toggle_openai_key_visibility()
         
         # Load patterns and instructions with proper type checking
         config_patterns = self.config.get('patterns', {})
