@@ -6,6 +6,7 @@ import sys
 import time
 import json
 import os
+import requests
 from EDMesg.base import EDMesgEvent
 from EDMesg.TwitchIntegration import create_twitch_provider, TwitchNotificationEvent
 from EDMesg.CovasNext import ExternalChatNotification, ExternalBackgroundChatNotification, create_covasnext_client
@@ -137,9 +138,12 @@ def create_pattern_matchers(config, channel_name):
 
 def process_event(username, message, channel_name, pattern_matchers, config, covasnext_client):
     """Process various Twitch events using configured patterns"""
-    # Log OpenAI verification status and API key presence
-    log(f"OpenAI Verification: {'Enabled' if config.get('openai_verification', False) else 'Disabled'}")
-    log(f"OpenAI API Key: {'Configured' if config.get('openai_api_key') else 'Not Configured'}")
+    # Check message with OpenAI Moderation if enabled
+    if config.get('openai_verification', False) and config.get('openai_api_key'):
+        is_flagged, categories = check_moderation(message, config['openai_api_key'])
+        if is_flagged:
+            log(f"Message from {username} was flagged by moderation API: {categories}")
+            return False
     
     # Check for immediate reaction first
     immediate_reaction = config.get('immediate_reaction', '')
@@ -219,11 +223,55 @@ def process_event(username, message, channel_name, pattern_matchers, config, cov
         
     return False
 
+def check_moderation(text, api_key):
+    """
+    Check text content using OpenAI's moderation API
+    Returns (is_flagged, categories) tuple where is_flagged is a boolean and categories is a dict of flagged categories
+    """
+    if not api_key:
+        log("Skipping moderation check - No API key provided")
+        return False, {}
+        
+    try:
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}"
+        }
+        
+        #log("Sending message for moderation check...")
+        response = requests.post(
+            "https://api.openai.com/v1/moderations",
+            headers=headers,
+            json={"input": text}
+        )
+        
+        if response.status_code == 200:
+            result = response.json()["results"][0]
+            is_flagged = result["flagged"]
+            categories = result["categories"]
+            
+            if is_flagged:
+                flagged_categories = [cat for cat, is_flagged in categories.items() if is_flagged]
+                log(f"[WARNING] Message FLAGGED by moderation - Categories: {', '.join(flagged_categories)}")
+            else:
+                log("[OK] Message passed moderation check")
+                
+            return is_flagged, categories
+        else:
+            log(f"[ERROR] Moderation API error: {response.status_code} - {response.text}")
+            return False, {}
+    except Exception as e:
+        log(f"[ERROR] Moderation check failed: {str(e)}")
+        return False, {}
+
 def main():
     args = parse_args()
     channel_name = args.channel.lower()
     if not channel_name.startswith('#'):
         channel_name = f"#{channel_name}"
+    
+    # Initialize client as None
+    covasnext_client = None
     
     try:
         config = json.loads(args.patterns)
@@ -241,18 +289,23 @@ def main():
     
     pattern_matchers = create_pattern_matchers(config, args.channel)
     
+    # Log startup configuration
+    log("=== Starting COVAS:NEXT Twitch Integration ===")
     log(f"Channel: {args.channel}")
     log(f"Bot Name: {args.bot_name}")
+    log(f"OpenAI Verification: {'Enabled' if config.get('openai_verification', False) else 'Disabled'}")
+    log(f"OpenAI API Key: {'Configured' if config.get('openai_api_key') else 'Not Configured'}")
+    log("=== Configuration Complete ===")
 
     # Initialize notification clients
-    covasnext_client = create_covasnext_client()
-
-    HOST = "irc.chat.twitch.tv"
-    PORT = 443
-    NICK = "justinfan" + str(int(time.time()))
-    CHANNEL = channel_name
-
     try:
+        covasnext_client = create_covasnext_client()
+        
+        HOST = "irc.chat.twitch.tv"
+        PORT = 443
+        NICK = "justinfan" + str(int(time.time()))
+        CHANNEL = channel_name
+
         context = ssl.create_default_context()
         sock = socket.socket()
         sock = context.wrap_socket(sock, server_hostname=HOST)
@@ -262,7 +315,7 @@ def main():
         sock.send(f"USER {NICK} 8 * :{NICK}\r\n".encode("utf-8"))
         sock.send(f"JOIN {CHANNEL}\r\n".encode("utf-8"))
 
-        log("Connected successfully")
+        log("Connected successfully to Twitch chat")
 
         while True:
             try:
@@ -279,17 +332,17 @@ def main():
 
             except Exception as e:
                 log(f"Error in message loop: {str(e)}")
-                break
+                continue  # Changed from break to continue to keep the connection alive
 
     except Exception as e:
         log(f"Connection error: {str(e)}")
     finally:
-        # Clean up notification clients
         try:
-            covasnext_client.close()
+            if covasnext_client is not None:
+                covasnext_client.close()
         except:
             pass
-        sys.exit(1)
+        sys.exit(1)  # Only exit if we've hit a fatal error
 
 if __name__ == "__main__":
     main()
