@@ -36,6 +36,7 @@ class ConfigManager:
         self.config: Dict[str, Any] = {}
         self.pattern_entries: Dict[str, ttk.Entry] = {}
         self.instruction_entries: Dict[str, ttk.Entry] = {}
+        self.immediate_reaction_entry: Optional[ttk.Entry] = None
 
         # Set initial window size
         window_width = 800
@@ -44,11 +45,11 @@ class ConfigManager:
         
         # Create styles
         style = ttk.Style()
-        style.configure('Transparent.TFrame', background='')
-        style.configure('Transparent.TLabelframe', background='')
-        style.configure('Transparent.TLabelframe.Label', background='')
-        style.configure('SemiTransparent.TLabel', background='')
-        style.configure('Visible.TButton', background='white')
+        style.configure('TFrame', relief='flat')
+        style.configure('TLabelframe', relief='groove')
+        style.configure('TLabelframe.Label', font=('Helvetica', 9, 'bold'))
+        style.configure('TLabel', font=('Helvetica', 9))
+        style.configure('TButton', font=('Helvetica', 9))
         
         # Set window icon
         icon_path = os.path.join('assets', 'EDAI_logo_transparent.png')
@@ -68,7 +69,7 @@ class ConfigManager:
         self.config = load_or_create_config()
         
         # Create main container for settings
-        self.main_container = ttk.Frame(self.container, padding="10", style='Transparent.TFrame')
+        self.main_container = ttk.Frame(self.container, padding="10")
         self.main_container.pack(fill='both', expand=True)
         
         # Create log container (initially hidden)
@@ -92,35 +93,36 @@ class ConfigManager:
 
     def setup_basic_settings(self, parent):
         # Basic Settings Frame with transparency
-        basic_frame = ttk.LabelFrame(parent, text="Basic Settings", padding="5", style='Transparent.TLabelframe')
+        basic_frame = ttk.LabelFrame(parent, text="Basic Settings", padding="5")
         basic_frame.pack(fill='x', padx=5, pady=5)
         
         # Channel Name
-        ttk.Label(basic_frame, text="Twitch Channel:", background='').pack(anchor='w')
+        ttk.Label(basic_frame, text="Twitch Channel:").pack(anchor='w')
         self.channel_entry = ttk.Entry(basic_frame)
         self.channel_entry.pack(fill='x', padx=5, pady=2)
         
         # Bot Name
-        ttk.Label(basic_frame, text="Bot Name:", background='').pack(anchor='w')
+        ttk.Label(basic_frame, text="Bot Name:").pack(anchor='w')
         self.bot_name_entry = ttk.Entry(basic_frame)
         self.bot_name_entry.pack(fill='x', padx=5, pady=2)
 
+        # Immediate Reaction Message
+        ttk.Label(basic_frame, text="Immediate Reaction Message:").pack(anchor='w')
+        self.immediate_reaction_entry = ttk.Entry(basic_frame)
+        self.immediate_reaction_entry.pack(fill='x', padx=5, pady=2)
+        ttk.Label(basic_frame, text="(Messages containing this text will trigger immediate reaction)", font=('Helvetica', 8)).pack(anchor='w', padx=5)
+
     def setup_event_settings(self, parent):
         # Event Settings Frame with transparency
-        event_frame = ttk.LabelFrame(parent, text="Event Settings", padding="5", style='Transparent.TLabelframe')
+        event_frame = ttk.LabelFrame(parent, text="Event Settings", padding="5")
         event_frame.pack(fill='both', expand=True, padx=5, pady=5)
         
         # Create canvas with scrollbar for events
-        canvas = tk.Canvas(event_frame, highlightthickness=0, bg='#F0F0F0')
+        canvas = tk.Canvas(event_frame, highlightthickness=0)
         scrollbar = ttk.Scrollbar(event_frame, orient="vertical", command=canvas.yview)
         
-        # Create styles for frames and labels
-        style = ttk.Style()
-        style.configure('Transparent.TFrame', background='#F0F0F0')
-        style.configure('SemiTransparent.TLabel', background='#F0F0F0')
-        
-        # Create scrollable frame with style
-        scrollable_frame = ttk.Frame(canvas, style='Transparent.TFrame')
+        # Create scrollable frame
+        scrollable_frame = ttk.Frame(canvas)
         
         scrollable_frame.bind(
             "<Configure>",
@@ -149,25 +151,25 @@ class ConfigManager:
         
         for i, (event_key, event_name, variables) in enumerate(events):
             # Event header with semi-transparent background
-            label_frame = ttk.Frame(scrollable_frame, style='Transparent.TFrame')
+            label_frame = ttk.Frame(scrollable_frame)
             label_frame.grid(row=i*3, column=0, columnspan=2, sticky='ew', padx=5, pady=(10,0))
             
-            ttk.Label(label_frame, text=f"{event_name}", font=('Helvetica', 10, 'bold'), style='SemiTransparent.TLabel').pack(side='left', padx=5)
-            ttk.Label(label_frame, text=f"Example: {DEFAULT_CONFIG['patterns'][event_key]}", font=('Helvetica', 8), style='SemiTransparent.TLabel').pack(side='left', padx=5)
+            ttk.Label(label_frame, text=f"{event_name}", font=('Helvetica', 10, 'bold')).pack(side='left', padx=5)
+            ttk.Label(label_frame, text=f"Example: {DEFAULT_CONFIG['patterns'][event_key]}", font=('Helvetica', 8)).pack(side='left', padx=5)
             
             # Pattern
-            pattern_frame = ttk.Frame(scrollable_frame, style='Transparent.TFrame')
+            pattern_frame = ttk.Frame(scrollable_frame)
             pattern_frame.grid(row=i*3+1, column=0, columnspan=2, sticky='ew', padx=5)
             
-            ttk.Label(pattern_frame, text="Pattern:", style='SemiTransparent.TLabel').pack(side='left', padx=5)
+            ttk.Label(pattern_frame, text="Pattern:").pack(side='left', padx=5)
             self.pattern_entries[event_key] = ttk.Entry(pattern_frame, width=40)
             self.pattern_entries[event_key].pack(side='left', fill='x', expand=True, padx=5)
             
             # Instruction
-            instruction_frame = ttk.Frame(scrollable_frame, style='Transparent.TFrame')
+            instruction_frame = ttk.Frame(scrollable_frame)
             instruction_frame.grid(row=i*3+2, column=0, columnspan=2, sticky='ew', padx=5)
             
-            ttk.Label(instruction_frame, text="Instruction:", style='SemiTransparent.TLabel').pack(side='left', padx=5)
+            ttk.Label(instruction_frame, text="Instruction:").pack(side='left', padx=5)
             self.instruction_entries[event_key] = ttk.Entry(instruction_frame, width=80)
             self.instruction_entries[event_key].pack(side='left', fill='x', expand=True, padx=5)
         
@@ -190,8 +192,11 @@ class ConfigManager:
         # Get values with proper type checking
         channel = str(self.config.get('channel', ''))
         bot_name = str(self.config.get('bot_name', ''))
+        immediate_reaction = str(self.config.get('immediate_reaction', ''))
         self.channel_entry.insert(0, channel)
         self.bot_name_entry.insert(0, bot_name)
+        if self.immediate_reaction_entry:
+            self.immediate_reaction_entry.insert(0, immediate_reaction)
         
         # Load patterns and instructions with proper type checking
         config_patterns = self.config.get('patterns', {})
@@ -222,6 +227,8 @@ class ConfigManager:
         # Update config with current values
         self.config['channel'] = self.channel_entry.get()
         self.config['bot_name'] = self.bot_name_entry.get()
+        if self.immediate_reaction_entry is not None:
+            self.config['immediate_reaction'] = self.immediate_reaction_entry.get()
         
         # Initialize sections if they don't exist
         if 'patterns' not in self.config or not isinstance(self.config['patterns'], dict):
@@ -250,6 +257,8 @@ class ConfigManager:
             # Clear and reload all fields
             self.channel_entry.delete(0, tk.END)
             self.bot_name_entry.delete(0, tk.END)
+            if self.immediate_reaction_entry:
+                self.immediate_reaction_entry.delete(0, tk.END)
             
             for entry in self.pattern_entries.values():
                 entry.delete(0, tk.END)
@@ -291,6 +300,8 @@ class ConfigManager:
         # Update config with current values before saving
         self.config['channel'] = channel
         self.config['bot_name'] = bot_name
+        if self.immediate_reaction_entry is not None:
+            self.config['immediate_reaction'] = self.immediate_reaction_entry.get()
         
         # Auto-save configuration before starting
         self.save_config()

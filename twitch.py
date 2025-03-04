@@ -133,15 +133,27 @@ def create_pattern_matchers(config, channel_name):
 
 def process_event(username, message, channel_name, pattern_matchers, config, covasnext_client):
     """Process various Twitch events using configured patterns"""
-    log(f"CHAT - {username}: {message}")
-
-    covasnext_client.publish(
-        ExternalBackgroundChatNotification(
-            service='twitch',
-            username=username,
-            text=message
+    # Check for immediate reaction first
+    immediate_reaction = config.get('immediate_reaction', '')
+    if immediate_reaction and immediate_reaction in message:
+        log(f"IMMEDIATE REACTION - {username}: {message}", True)
+        covasnext_client.publish(
+            ExternalChatNotification(
+                service='twitch',
+                username=config['bot_name'],
+                text=f"Reply to twitch message from {username}: {message}"
+            )
         )
-    )
+    else:
+        log(f"CHAT - {username}: {message}")
+        covasnext_client.publish(
+            ExternalBackgroundChatNotification(
+                service='twitch',
+                username=username,
+                text=message
+            )
+        )
+
 
     for pattern, formatter in pattern_matchers:
         try:
