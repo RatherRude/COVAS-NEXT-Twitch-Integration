@@ -37,6 +37,9 @@ class ConfigManager:
         self.pattern_entries: Dict[str, ttk.Entry] = {}
         self.instruction_entries: Dict[str, ttk.Entry] = {}
         self.immediate_reaction_entry: Optional[ttk.Entry] = None
+        self.openai_verification_var = tk.BooleanVar()
+        self.openai_verification_checkbox = None
+        self.openai_api_key_entry = None
 
         # Set initial window size
         window_width = 800
@@ -105,6 +108,20 @@ class ConfigManager:
         ttk.Label(basic_frame, text="Bot Name:").pack(anchor='w')
         self.bot_name_entry = ttk.Entry(basic_frame)
         self.bot_name_entry.pack(fill='x', padx=5, pady=2)
+
+        # OpenAI Verification Checkbox
+        self.openai_verification_var = tk.BooleanVar()
+        self.openai_verification_checkbox = ttk.Checkbutton(
+            basic_frame, 
+            text="Enable OpenAI Verification",
+            variable=self.openai_verification_var
+        )
+        self.openai_verification_checkbox.pack(anchor='w', padx=5, pady=2)
+
+        # OpenAI API Key
+        ttk.Label(basic_frame, text="OpenAI API Key:").pack(anchor='w')
+        self.openai_api_key_entry = ttk.Entry(basic_frame, show="*")  # Password field
+        self.openai_api_key_entry.pack(fill='x', padx=5, pady=2)
 
         # Immediate Reaction Message
         ttk.Label(basic_frame, text="Immediate Reaction Message:").pack(anchor='w')
@@ -193,10 +210,16 @@ class ConfigManager:
         channel = str(self.config.get('channel', ''))
         bot_name = str(self.config.get('bot_name', ''))
         immediate_reaction = str(self.config.get('immediate_reaction', ''))
+        openai_verification = bool(self.config.get('openai_verification', False))
+        openai_api_key = str(self.config.get('openai_api_key', ''))
+
         self.channel_entry.insert(0, channel)
         self.bot_name_entry.insert(0, bot_name)
         if self.immediate_reaction_entry:
             self.immediate_reaction_entry.insert(0, immediate_reaction)
+        self.openai_verification_var.set(openai_verification)
+        if self.openai_api_key_entry:
+            self.openai_api_key_entry.insert(0, openai_api_key)
         
         # Load patterns and instructions with proper type checking
         config_patterns = self.config.get('patterns', {})
@@ -227,6 +250,8 @@ class ConfigManager:
         # Update config with current values
         self.config['channel'] = self.channel_entry.get()
         self.config['bot_name'] = self.bot_name_entry.get()
+        self.config['openai_verification'] = bool(self.openai_verification_var.get())
+        self.config['openai_api_key'] = self.openai_api_key_entry.get() if self.openai_api_key_entry else ''
         if self.immediate_reaction_entry is not None:
             self.config['immediate_reaction'] = self.immediate_reaction_entry.get()
         
@@ -364,6 +389,13 @@ class ConfigManager:
                 '--patterns',
                 config_str
             ])
+
+            # Add OpenAI settings if enabled
+            if self.openai_verification_var.get():
+                cmd.extend(['--openai-verification'])
+                api_key = self.openai_api_key_entry.get() if self.openai_api_key_entry else ''
+                if api_key:
+                    cmd.extend(['--openai-api-key', api_key])
             
             # Start bot process
             self.bot_process = subprocess.Popen(

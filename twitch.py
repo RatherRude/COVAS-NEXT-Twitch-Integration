@@ -13,6 +13,8 @@ from EDMesg.CovasNext import ExternalChatNotification, ExternalBackgroundChatNot
 DEFAULT_CONFIG = {
     "channel": "",
     "bot_name": "",
+    "openai_verification": False,
+    "openai_api_key": "",
     "patterns": {
         "follow": "{user} just followed!",
         "tip": "{user} just tipped {amount}! Message: {message}",
@@ -77,6 +79,8 @@ def parse_args():
     parser.add_argument('--channel', required=True, help='Twitch channel name')
     parser.add_argument('--bot-name', required=True, help='Bot name')
     parser.add_argument('--patterns', required=True, help='JSON string of event patterns and instructions')
+    parser.add_argument('--openai-verification', action='store_true', help='Enable OpenAI verification')
+    parser.add_argument('--openai-api-key', help='OpenAI API key')
     return parser.parse_args()
 
 def log(message, is_debug=False):
@@ -133,6 +137,10 @@ def create_pattern_matchers(config, channel_name):
 
 def process_event(username, message, channel_name, pattern_matchers, config, covasnext_client):
     """Process various Twitch events using configured patterns"""
+    # Log OpenAI verification status and API key presence
+    log(f"OpenAI Verification: {'Enabled' if config.get('openai_verification', False) else 'Disabled'}")
+    log(f"OpenAI API Key: {'Configured' if config.get('openai_api_key') else 'Not Configured'}")
+    
     # Check for immediate reaction first
     immediate_reaction = config.get('immediate_reaction', '')
     if immediate_reaction and immediate_reaction in message:
