@@ -154,61 +154,61 @@ def process_event(username, message, channel_name, pattern_matchers, config, cov
             )
         )
 
-
-    for pattern, formatter in pattern_matchers:
-        try:
-            match = pattern.match(message)
-            if match:
-                event_key, groups = formatter(match)
-                instruction = config['instructions'][event_key]
-                
-                # Format instruction with captured groups
-                format_args = {
-                    'user': groups[0],
-                    'channel': channel_name
-                }
-                
-                # Add additional parameters based on event type
-                if event_key in ['tip', 'bits']:
-                    format_args.update({
-                        'amount': groups[1],
-                        'message': groups[2]
-                    })
-                elif event_key in ['host', 'raid']:
-                    format_args['viewers'] = groups[1]
-                elif event_key == 'resub':
-                    format_args['months'] = groups[1]
-                elif event_key == 'redeem':
-                    format_args['reward'] = groups[1]
-                elif event_key == 'order':
-                    format_args['item'] = groups[1]
-                
-                try:
-                    formatted_instruction = instruction.format(**format_args)
-                    log(f"INSTRUCTION: {formatted_instruction}")
+    if username.lower() == config['bot_name'].lower():
+        for pattern, formatter in pattern_matchers:
+            try:
+                match = pattern.match(message)
+                if match:
+                    event_key, groups = formatter(match)
+                    instruction = config['instructions'][event_key]
                     
-                    # Send instruction to EDMesg using TwitchNotificationEvent
+                    # Format instruction with captured groups
+                    format_args = {
+                        'user': groups[0],
+                        'channel': channel_name
+                    }
+                    
+                    # Add additional parameters based on event type
+                    if event_key in ['tip', 'bits']:
+                        format_args.update({
+                            'amount': groups[1],
+                            'message': groups[2]
+                        })
+                    elif event_key in ['host', 'raid']:
+                        format_args['viewers'] = groups[1]
+                    elif event_key == 'resub':
+                        format_args['months'] = groups[1]
+                    elif event_key == 'redeem':
+                        format_args['reward'] = groups[1]
+                    elif event_key == 'order':
+                        format_args['item'] = groups[1]
+                    
                     try:
-                        covasnext_client.publish(
-                            ExternalChatNotification(
-                                service='twitch',
-                                username=config['bot_name'],
-                                text=formatted_instruction
+                        formatted_instruction = instruction.format(**format_args)
+                        log(f"INSTRUCTION: {formatted_instruction}")
+                        
+                        # Send instruction to EDMesg using TwitchNotificationEvent
+                        try:
+                            covasnext_client.publish(
+                                ExternalChatNotification(
+                                    service='twitch',
+                                    username=config['bot_name'],
+                                    text=formatted_instruction
+                                )
                             )
-                        )
-                        log(f"Sent instruction to EDMesg: {formatted_instruction}")
-                    except Exception as e:
-                        log(f"Error sending to EDMesg: {str(e)}")
-                    
-                    return True
-                except KeyError as e:
-                    log(f"ERROR - Failed to format instruction: {str(e)}")
-            else:
-                # Debug output for non-matching patterns
-                log(f"DEBUG - Pattern '{pattern.pattern}' did not match message: {message}", True)
-        except Exception as e:
-            log(f"ERROR - Pattern matching failed: {str(e)}", True)
-    
+                            log(f"Sent instruction to EDMesg: {formatted_instruction}")
+                        except Exception as e:
+                            log(f"Error sending to EDMesg: {str(e)}")
+                        
+                        return True
+                    except KeyError as e:
+                        log(f"ERROR - Failed to format instruction: {str(e)}")
+                else:
+                    # Debug output for non-matching patterns
+                    log(f"DEBUG - Pattern '{pattern.pattern}' did not match message: {message}", True)
+            except Exception as e:
+                log(f"ERROR - Pattern matching failed: {str(e)}", True)
+        
     return False
 
 def main():
