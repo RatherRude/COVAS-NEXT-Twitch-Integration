@@ -14,6 +14,11 @@ from twitch import DEFAULT_CONFIG, load_or_create_config, main as twitch_main
 from EDMesg.base import EDMesgEvent
 from EDMesg.TwitchIntegration import create_twitch_provider, TwitchNotificationEvent
 
+from EDMesg.CovasNext import (
+    ExternalChatNotification,
+    create_covasnext_client,
+)
+
 class ConfigManager:
     def __init__(self, root):
         self.root = root
@@ -32,7 +37,8 @@ class ConfigManager:
         self.pattern_entries: Dict[str, ttk.Entry] = {}
         self.instruction_entries: Dict[str, ttk.Entry] = {}
         self.twitch_provider = create_twitch_provider()  # Create Twitch provider
-        
+        self.covasnext_client = create_covasnext_client()  # Create CovasNext client
+
         # Set initial window size
         window_width = 800
         window_height = 600
@@ -391,6 +397,15 @@ class ConfigManager:
                             # Send instruction to EDMesg using TwitchNotificationEvent
                             try:
                                 instruction_text = line.replace("INSTRUCTION:", "").strip()
+                                print(f"publish {instruction_text}")
+                                
+                                self.covasnext_client.publish(
+                                    ExternalChatNotification(
+                                        service='twitch',
+                                        username=self.config['bot_name'],
+                                        text=instruction_text
+                                    )
+                                )
                                 self.twitch_provider.publish(
                                     TwitchNotificationEvent(
                                         message=instruction_text,
