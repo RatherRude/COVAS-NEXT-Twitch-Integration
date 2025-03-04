@@ -36,8 +36,6 @@ class ConfigManager:
         self.config: Dict[str, Any] = {}
         self.pattern_entries: Dict[str, ttk.Entry] = {}
         self.instruction_entries: Dict[str, ttk.Entry] = {}
-        self.twitch_provider = create_twitch_provider()  # Create Twitch provider
-        self.covasnext_client = create_covasnext_client()  # Create CovasNext client
 
         # Set initial window size
         window_width = 800
@@ -394,28 +392,6 @@ class ConfigManager:
                         # Check if this is an INSTRUCTION entry
                         if isinstance(line, str) and "INSTRUCTION" in line:
                             self.log_text.insert(tk.END, line, "cyan")
-                            # Send instruction to EDMesg using TwitchNotificationEvent
-                            try:
-                                instruction_text = line.replace("INSTRUCTION:", "").strip()
-                                print(f"publish {instruction_text}")
-                                
-                                self.covasnext_client.publish(
-                                    ExternalChatNotification(
-                                        service='twitch',
-                                        username=self.config['bot_name'],
-                                        text=instruction_text
-                                    )
-                                )
-                                self.twitch_provider.publish(
-                                    TwitchNotificationEvent(
-                                        message=instruction_text,
-                                        notification_type="message",
-                                        timestamp=""  # Current time will be used
-                                    )
-                                )
-                                print(f"Sent instruction to EDMesg: {instruction_text}")
-                            except Exception as e:
-                                print(f"Error sending to EDMesg: {str(e)}")
                         else:
                             self.log_text.insert(tk.END, line)
                         self.log_text.see(tk.END)
