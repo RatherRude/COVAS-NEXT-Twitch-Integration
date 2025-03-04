@@ -80,7 +80,7 @@ def log(message, is_debug=False):
     """Print message and flush stdout to ensure immediate output"""
     if not is_debug:  # Only print non-debug messages
         timestamp = time.strftime("%H:%M")
-        print(f"[{timestamp}] {message}", flush=True)
+        print(f"{message}", flush=True)
 
 def create_pattern_matchers(config, channel_name):
     """Create regex patterns and their corresponding formatters based on configured patterns"""
@@ -128,8 +128,10 @@ def create_pattern_matchers(config, channel_name):
     
     return pattern_matchers
 
-def process_event(message, channel_name, pattern_matchers, config):
+def process_event(username, message, channel_name, pattern_matchers, config):
     """Process various Twitch events using configured patterns"""
+    log(f"CHAT - {username}: {message}")
+
     for pattern, formatter in pattern_matchers:
         try:
             match = pattern.match(message)
@@ -225,8 +227,7 @@ def main():
                 chat_match = re.search(r":([^!]+)![^@]+@[^.]+\.tmi\.twitch\.tv PRIVMSG #[^:]+:(.+)", resp.strip())
                 if chat_match:
                     username, message = chat_match.groups()
-                    log(f"CHAT - {username}: {message}")
-                    process_event(message, args.channel, pattern_matchers, config)
+                    process_event(username, message, args.channel, pattern_matchers, config)
 
             except Exception as e:
                 log(f"Error in message loop: {str(e)}")
