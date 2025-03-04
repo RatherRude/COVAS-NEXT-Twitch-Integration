@@ -77,11 +77,3 @@ jobs:
             ./dist/COVAS_Twitch_Integration.exe
             ./dist/COVAS_Twitch_Bot.exe
             ./README.md 
-
-## Antivirus False Positives
-
-Some antivirus software may flag this application as suspicious. This is a false positive due to the way the executable is packaged. The application is completely safe to use. You can:
-
-1. Add the application to your antivirus exclusions
-2. If using Windows Defender, click "More info" and then "Run anyway" when launching
-3. Verify the executable's digital signature (if code signing is implemented) 
