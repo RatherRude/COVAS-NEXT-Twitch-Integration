@@ -1,3 +1,3 @@
 Pillow>=10.0.0
 twitchio==2.6.0
-EDMesg @ git+https://github.com/RatherRude/EDMesg.git@6c2f802
+EDMesg @ git+https://github.com/RatherRude/EDMesg.git@61e237b

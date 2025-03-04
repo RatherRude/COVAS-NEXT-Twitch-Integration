@@ -8,7 +8,7 @@ import json
 import os
 from EDMesg.base import EDMesgEvent
 from EDMesg.TwitchIntegration import create_twitch_provider, TwitchNotificationEvent
-from EDMesg.CovasNext import ExternalChatNotification, create_covasnext_client
+from EDMesg.CovasNext import ExternalChatNotification, ExternalBackgroundChatNotification, create_covasnext_client
 
 DEFAULT_CONFIG = {
     "channel": "",
@@ -131,9 +131,17 @@ def create_pattern_matchers(config, channel_name):
     
     return pattern_matchers
 
-def process_event(username, message, channel_name, pattern_matchers, config, twitch_provider, covasnext_client):
+def process_event(username, message, channel_name, pattern_matchers, config, covasnext_client):
     """Process various Twitch events using configured patterns"""
     log(f"CHAT - {username}: {message}")
+
+    covasnext_client.publish(
+        ExternalBackgroundChatNotification(
+            service='twitch',
+            username=username,
+            text=f"CHAT - {username}: {message}"
+        )
+    )
 
     for pattern, formatter in pattern_matchers:
         try:
@@ -174,13 +182,6 @@ def process_event(username, message, channel_name, pattern_matchers, config, twi
                                 service='twitch',
                                 username=config['bot_name'],
                                 text=formatted_instruction
-                            )
-                        )
-                        twitch_provider.publish(
-                            TwitchNotificationEvent(
-                                message=formatted_instruction,
-                                notification_type="message",
-                                timestamp=""  # Current time will be used
                             )
                         )
                         log(f"Sent instruction to EDMesg: {formatted_instruction}")
@@ -224,7 +225,6 @@ def main():
     log(f"Bot Name: {args.bot_name}")
 
     # Initialize notification clients
-    twitch_provider = create_twitch_provider()
     covasnext_client = create_covasnext_client()
 
     HOST = "irc.chat.twitch.tv"
@@ -255,7 +255,7 @@ def main():
                 chat_match = re.search(r":([^!]+)![^@]+@[^.]+\.tmi\.twitch\.tv PRIVMSG #[^:]+:(.+)", resp.strip())
                 if chat_match:
                     username, message = chat_match.groups()
-                    process_event(username, message, args.channel, pattern_matchers, config, twitch_provider, covasnext_client)
+                    process_event(username, message, args.channel, pattern_matchers, config, covasnext_client)
 
             except Exception as e:
                 log(f"Error in message loop: {str(e)}")
@@ -266,7 +266,6 @@ def main():
     finally:
         # Clean up notification clients
         try:
-            twitch_provider.close()
             covasnext_client.close()
         except:
             pass
