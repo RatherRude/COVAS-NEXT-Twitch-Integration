@@ -4,17 +4,52 @@ A bridge between Twitch live events and COVAS:NEXT, enabling AI-driven interacti
 
 ## Overview
 
-This integration listens to Twitch chat events (follows, subs, tips, etc.) and forwards them to COVAS:NEXT, which then generates contextual AI responses in Elite: Dangerous. The system requires a Twitch bot account to post messages that trigger the responses.
+This integration listens to Twitch chat events (follows, subs, tips, bits, etc.) and forwards them to COVAS:NEXT, which then generates contextual AI responses in Elite: Dangerous. The system uses a graphical interface to configure event patterns and instructions.
 
-## Quick Setup
+## Features
+
+- **Easy-to-use GUI** for configuration and bot management
+- **Real-time pattern matching** for Twitch events
+- **Content moderation** using OpenAI's moderation API
+- **Immediate reaction** to specific chat messages
+- **Background processing** of all chat messages
+- **Customizable patterns and instructions** for all event types
+
+## Setup and Installation
 
 1. **Requirements**
-   - COVAS:NEXT running
+   - COVAS:NEXT must be running
+   - Python 3.7+ (if running from source)
+   - Required packages: tkinter, PIL, requests
 
-2. **Configuration**
-   - Enter your Twitch channel name
-   - Enter your bot account name
-   - Configure event patterns and instructions using the templates below
+2. **Installation**
+   - Download the latest release or clone this repository
+   - If running from source, install dependencies:
+     ```
+     pip install -r requirements.txt
+     ```
+
+3. **Running the Application**
+   - Double-click the executable (Windows) or run:
+     ```
+     python config_manager.py
+     ```
+
+## Configuration
+
+### Basic Settings
+
+- **Twitch Channel**: The channel name you want to monitor
+- **Bot Name**: The name of the bot that will post event messages in your chat
+- **OpenAI Verification**: Enable to use OpenAI's moderation API to check message content
+- **OpenAI API Key**: Your OpenAI API key (required if verification is enabled)
+- **Immediate Reaction Message**: Text that will trigger an immediate response when found in chat messages (default: @COVAS)
+
+### Event Settings
+
+For each event type, you can configure:
+- **Pattern**: The message format to match in chat
+- **Instruction**: What COVAS:NEXT should do when the pattern is matched
 
 ## Default Event Templates
 
@@ -49,7 +84,7 @@ This integration listens to Twitch chat events (follows, subs, tips, etc.) and f
 - **Instruction**: `Acknowledge {user}'s generosity and express gratitude.`
 
 ### Bits
-- **Pattern**: `{user} cheered {amount} bits! {message}`
+- **Pattern**: `{user} cheered {amount} bits! Message: {message}`
 - **Variables**: `{user}, {amount}, {message}`
 - **Instruction**: `Give a big thank you to {user} for the {amount} bits and mention their message: {message}`
 
@@ -68,13 +103,37 @@ This integration listens to Twitch chat events (follows, subs, tips, etc.) and f
 - **Variables**: `{user}, {item}`
 - **Instruction**: `Acknowledge {user}'s order for {item} and let them know when it will be fulfilled.`
 
-## Tips
+## How It Works
 
-- Test your patterns before going live (set your name as botname and write into your own chat to emulate notifications)
-- Keep AI instructions clear and specific
-- Use available variables in your templates (shown in the UI)
-- Save your configuration before starting the bot
+1. Start the application and configure your settings
+2. Click "Start Bot" to begin monitoring chat
+3. When your bot posts a message in chat that matches one of your configured patterns, COVAS:NEXT will generate a response
+4. All chat messages are also processed in the background for AI context
+5. Messages containing the "immediate reaction" text trigger a direct response
 
-## Note
+## Advanced Features
 
-Remember to have your bot post messages in chat - the integration listens for these messages to trigger COVAS:NEXT responses.
+### OpenAI Moderation
+
+When enabled, all chat messages are checked using OpenAI's moderation API before processing. This helps filter out inappropriate content before it reaches COVAS:NEXT.
+
+### Immediate Reaction
+
+Configure a trigger phrase (default: @COVAS) that will cause COVAS:NEXT to respond immediately to a message when detected in chat.
+
+### Background Chat Processing
+
+All chat messages are sent to COVAS:NEXT as background context, allowing the AI to have awareness of ongoing conversations.
+
+## Troubleshooting
+
+- **Bot Not Connecting**: Make sure your channel name is correct
+- **Patterns Not Matching**: Check your pattern syntax against example messages
+- **OpenAI Verification Errors**: Verify your API key is correct and has sufficient quota
+
+## Notes
+
+- The application saves your configuration automatically
+- You can reset to default settings at any time
+- Make sure your bot is posting messages in chat that match your configured patterns
+- Test your patterns before going live by using your bot name and writing in your own chat
