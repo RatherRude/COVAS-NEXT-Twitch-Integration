@@ -166,7 +166,7 @@ def process_event(username, message, channel_name, pattern_matchers, config, cov
             )
         )
 
-    if username.lower() == config['bot_name'].lower():
+    if username.lower() in [config['bot_name'].lower(), channel_name.lower()]:
         for pattern, formatter in pattern_matchers:
             try:
                 match = pattern.match(message)
