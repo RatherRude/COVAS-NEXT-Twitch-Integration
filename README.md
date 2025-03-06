@@ -19,21 +19,9 @@ This integration listens to Twitch chat events (follows, subs, tips, bits, etc.)
 
 1. **Requirements**
    - COVAS:NEXT must be running
-   - Python 3.7+ (if running from source)
-   - Required packages: tkinter, PIL, requests
 
-2. **Installation**
-   - Download the latest release or clone this repository
-   - If running from source, install dependencies:
-     ```
-     pip install -r requirements.txt
-     ```
-
-3. **Running the Application**
-   - Double-click the executable (Windows) or run:
-     ```
-     python config_manager.py
-     ```
+2. **Running the Application**
+   - Double-click the executable (Windows)
 
 ## Configuration
 
@@ -115,7 +103,7 @@ For each event type, you can configure:
 
 ### OpenAI Moderation
 
-When enabled, all chat messages are checked using OpenAI's moderation API before processing. This helps filter out inappropriate content before it reaches COVAS:NEXT.
+When enabled, all chat messages are checked using OpenAI's moderation API before processing. This helps filter out inappropriate content before it reaches COVAS:NEXT. This is free.
 
 ### Immediate Reaction
 
@@ -129,11 +117,11 @@ All chat messages are sent to COVAS:NEXT as background context, allowing the AI 
 
 - **Bot Not Connecting**: Make sure your channel name is correct
 - **Patterns Not Matching**: Check your pattern syntax against example messages
-- **OpenAI Verification Errors**: Verify your API key is correct and has sufficient quota
+- **OpenAI Verification Errors**: Verify your API key is correct
 
 ## Notes
 
 - The application saves your configuration automatically
 - You can reset to default settings at any time
 - Make sure your bot is posting messages in chat that match your configured patterns
-- Test your patterns before going live by using your bot name and writing in your own chat
+- Test your patterns before going live, the integration will react to the channel owner's and the bot's messages.
