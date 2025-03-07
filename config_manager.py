@@ -435,7 +435,8 @@ class ConfigManager:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 universal_newlines=True,
-                bufsize=1
+                bufsize=1,
+                encoding='utf-8'
             )
             
             # Start output reading thread

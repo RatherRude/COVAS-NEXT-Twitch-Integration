@@ -6,10 +6,13 @@ import sys
 import time
 import json
 import os
+import io
 import requests
 from EDMesg.base import EDMesgEvent
 from EDMesg.TwitchIntegration import create_twitch_provider, TwitchNotificationEvent
 from EDMesg.CovasNext import ExternalChatNotification, ExternalBackgroundChatNotification, create_covasnext_client
+
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 DEFAULT_CONFIG = {
     "channel": "",
@@ -86,9 +89,12 @@ def parse_args():
 
 def log(message, is_debug=False):
     """Print message and flush stdout to ensure immediate output"""
-    if not is_debug:  # Only print non-debug messages
-        timestamp = time.strftime("%H:%M")
-        print(f"{message}", flush=True)
+    try:
+        if not is_debug:  # Only print non-debug messages
+            timestamp = time.strftime("%H:%M")
+            print(f"{message}", flush=True)
+    except Exception as e:
+        print(f"Error logging message: {str(e)}")
 
 def create_pattern_matchers(config, channel_name):
     """Create regex patterns and their corresponding formatters based on configured patterns"""
