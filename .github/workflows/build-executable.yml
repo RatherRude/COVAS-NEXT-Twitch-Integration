@@ -80,6 +80,6 @@ jobs:
         with:
           name: COVAS_Twitch_Integration_v${{ github.sha }}
           path: |
-            ./dist/COVAS_Twitch_Integration.exe
-            ./dist/README.md
+            ./COVAS_Twitch_Integration.exe
+            ./README.md
             ./bot
