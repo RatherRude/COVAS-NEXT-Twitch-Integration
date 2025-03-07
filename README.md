@@ -21,7 +21,7 @@ This integration listens to Twitch chat events (follows, subs, tips, bits, etc.)
    - COVAS:NEXT must be running
 
 2. **Running the Application**
-   - Double-click the executable (Windows)
+   - Double-click the executable (Windows) found in the UI folder
 
 ## Configuration
 
