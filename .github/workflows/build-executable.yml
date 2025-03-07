@@ -69,11 +69,17 @@ jobs:
             --uac-admin `
             --name "COVAS_Twitch_Bot"
 
+      - name: Organize files for artifact
+        run: |
+          mkdir -p bot
+          move dist\COVAS_Twitch_Bot.exe bot\
+          copy README.md dist\
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: COVAS_Twitch_Integration_v${{ github.sha }}
           path: |
             ./dist/COVAS_Twitch_Integration.exe
-            ./dist/COVAS_Twitch_Bot.exe
-            ./README.md 
+            ./dist/README.md
+            ./bot
