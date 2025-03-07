@@ -22,6 +22,13 @@ jobs:
           python -m pip install --force-reinstall -r requirements.txt
           python -m pip install pyinstaller
 
+      - name: Install pyinstaller
+        run: |
+          $Env:CL = "/Od"
+          $Env:PYINSTALLER_COMPILE_BOOTLOADER = "true"
+          python -m pip install --force-reinstall --ignore-installed --no-binary :all: --no-cache pyinstaller@git+https://github.com/pyinstaller/pyinstaller.git@0d562b5
+          $Env:CL = ""
+
       # Add version info file
       - name: Create Version Info
         run: |
