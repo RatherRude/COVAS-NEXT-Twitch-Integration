@@ -168,7 +168,7 @@ def process_event(username, message, channel_name, pattern_matchers, config, cov
             ExternalBackgroundChatNotification(
                 service='twitch',
                 username=username,
-                text=message
+                text=f"Twitch user {username} wrote: {message}"
             )
         )
 
@@ -211,7 +211,7 @@ def process_event(username, message, channel_name, pattern_matchers, config, cov
                                 ExternalChatNotification(
                                     service='twitch',
                                     username=config['bot_name'],
-                                    text=formatted_instruction
+                                    text=f"{message} - {formatted_instruction}"
                                 )
                             )
                             log(f"Sent instruction to EDMesg: {formatted_instruction}")
