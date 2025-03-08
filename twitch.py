@@ -12,7 +12,9 @@ from EDMesg.base import EDMesgEvent
 from EDMesg.TwitchIntegration import create_twitch_provider, TwitchNotificationEvent
 from EDMesg.CovasNext import ExternalChatNotification, ExternalBackgroundChatNotification, create_covasnext_client
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+# Add a check to ensure sys.stdout exists before trying to wrap it
+if sys.stdout is not None:
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 DEFAULT_CONFIG = {
     "channel": "",
@@ -55,11 +57,11 @@ def load_or_create_config(config_path='covas_twitch_config.json'):
                 merged_config = DEFAULT_CONFIG.copy()
                 if isinstance(config, dict):
                     merged_config.update(config)
-                    # Ensure all sections exist
+                    # Only process dictionary sections
                     for section in ['patterns', 'instructions']:
                         if section not in merged_config:
                             merged_config[section] = DEFAULT_CONFIG[section]
-                        elif isinstance(merged_config[section], dict):
+                        elif isinstance(merged_config[section], dict) and section in DEFAULT_CONFIG and isinstance(DEFAULT_CONFIG[section], dict):
                             # Ensure all events exist in each section
                             for key in DEFAULT_CONFIG[section]:
                                 if key not in merged_config[section]:
