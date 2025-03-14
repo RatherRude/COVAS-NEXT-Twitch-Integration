@@ -4,7 +4,9 @@ A bridge between Twitch live events and COVAS:NEXT, enabling AI-driven interacti
 
 ## Overview
 
-This integration listens to Twitch chat events (follows, subs, tips, bits, etc.) and forwards them to COVAS:NEXT, which then generates contextual AI responses in Elite: Dangerous. The system uses a graphical interface to configure event patterns and instructions.
+This integration listens to Twitch chat events (follows, subs, tips, bits, etc.) and forwards them to COVAS:NEXT, which then generates contextual AI responses in Elite: Dangerous. Regular chat messages are also included in the LLM context, allowing the AI to develop an understanding of ongoing conversations and naturally react to discussions, jokes, and commands from the audience.
+
+The system features a graphical interface for configuring event patterns, custom responses, and AI behavior, enabling a seamless, immersive experience. By dynamically adapting to both chat reactions and game events, COVAS:NEXT enhances interactivity, making the AI feel like an active crew member aware of both the game and the Twitch chat.
 
 ## Features
 
