@@ -170,7 +170,7 @@ def process_event(username, message, channel_name, pattern_matchers, config, cov
             ExternalBackgroundChatNotification(
                 service='twitch',
                 username=username,
-                text=f"Twitch user {username} wrote: {message}"
+                text=message
             )
         )
 
